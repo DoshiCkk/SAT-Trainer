@@ -136,9 +136,11 @@ code {
   box-shadow: var(--shadow-sm);
   transition: background 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
 }
-.btn:hover:not(:disabled) {
-  background: var(--surface-sunk);
-  border-color: var(--line-strong);
+@media (hover: hover) {
+  .btn:hover:not(:disabled) {
+    background: var(--surface-sunk);
+    border-color: var(--line-strong);
+  }
 }
 .btn:disabled {
   opacity: 0.45;
@@ -151,17 +153,21 @@ code {
   color: #fff;
   font-weight: 600;
 }
-.btn.primary:hover:not(:disabled) {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
+@media (hover: hover) {
+  .btn.primary:hover:not(:disabled) {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+  }
 }
 .btn.ghost {
   border-color: transparent;
   background: transparent;
   box-shadow: none;
 }
-.btn.ghost:hover:not(:disabled) {
-  background: var(--surface-sunk);
+@media (hover: hover) {
+  .btn.ghost:hover:not(:disabled) {
+    background: var(--surface-sunk);
+  }
 }
 .btn.sm {
   padding: 5px 13px;
@@ -256,8 +262,10 @@ code {
   color: var(--muted);
   transition: background 0.14s ease, color 0.14s ease;
 }
-.section-tabs button:hover:not(:disabled):not([aria-pressed="true"]) {
-  color: var(--ink);
+@media (hover: hover) {
+  .section-tabs button:hover:not(:disabled):not([aria-pressed="true"]) {
+    color: var(--ink);
+  }
 }
 .section-tabs button[aria-pressed="true"] {
   background: var(--surface);
@@ -282,8 +290,10 @@ code {
   font-weight: 500;
   transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
 }
-.chip:hover:not(:disabled):not([aria-pressed="true"]) {
-  border-color: var(--muted);
+@media (hover: hover) {
+  .chip:hover:not(:disabled):not([aria-pressed="true"]) {
+    border-color: var(--muted);
+  }
 }
 .chip[aria-pressed="true"] {
   background: var(--accent-soft);
@@ -343,10 +353,12 @@ code {
   box-shadow: var(--shadow-sm);
   transition: border-color 0.14s ease, box-shadow 0.14s ease, transform 0.14s ease;
 }
-.mode-card:hover:not(:disabled) {
-  border-color: var(--accent);
-  box-shadow: var(--shadow);
-  transform: translateY(-1px);
+@media (hover: hover) {
+  .mode-card:hover:not(:disabled) {
+    border-color: var(--accent);
+    box-shadow: var(--shadow);
+    transform: translateY(-1px);
+  }
 }
 .mode-card:disabled {
   opacity: 0.5;
@@ -419,6 +431,10 @@ label.field {
   font-weight: 500;
   cursor: pointer;
 }
+button {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
 input[type="checkbox"] {
   width: 16px;
   height: 16px;
@@ -431,6 +447,7 @@ input[type="checkbox"] {
 .test {
   display: flex;
   height: 100vh;
+  height: 100dvh;
   position: relative;
   background: var(--surface);
 }
@@ -566,8 +583,10 @@ input[type="checkbox"] {
   padding: 4px 6px;
   border-radius: var(--r-sm);
 }
-.mark-btn:hover {
-  background: var(--surface-sunk);
+@media (hover: hover) {
+  .mark-btn:hover {
+    background: var(--surface-sunk);
+  }
 }
 .mark-btn[aria-pressed="true"] {
   color: var(--mark);
@@ -608,9 +627,11 @@ input[type="checkbox"] {
   line-height: 1.45;
   transition: border-color 0.12s ease, background 0.12s ease;
 }
-.choice:hover:not(.crossed) {
-  border-color: var(--accent);
-  background: #fafbff;
+@media (hover: hover) {
+  .choice:hover:not(.crossed):not([aria-pressed="true"]) {
+    border-color: var(--accent);
+    background: #fafbff;
+  }
 }
 .choice[aria-pressed="true"] {
   border-color: var(--accent);
@@ -660,13 +681,16 @@ input[type="checkbox"] {
   color: var(--muted);
   flex: none;
 }
-.cross-btn:hover {
-  border-color: var(--line-strong);
-  color: var(--ink);
+@media (hover: hover) {
+  .cross-btn:hover {
+    border-color: var(--line-strong);
+    color: var(--ink);
+  }
 }
 
 .spr-input {
-  width: 260px;
+  width: 100%;
+  max-width: 260px;
   font-family: var(--serif);
   font-size: 19px;
   padding: 11px 13px;
@@ -693,8 +717,10 @@ input[type="checkbox"] {
   font-size: 13.5px;
   box-shadow: var(--shadow-sm);
 }
-.nav-toggle:hover {
-  border-color: var(--muted);
+@media (hover: hover) {
+  .nav-toggle:hover {
+    border-color: var(--muted);
+  }
 }
 
 .nav-pop {
@@ -727,8 +753,10 @@ input[type="checkbox"] {
   font-variant-numeric: tabular-nums;
   transition: transform 0.1s ease;
 }
-.nav-cell:hover {
-  transform: scale(1.06);
+@media (hover: hover) {
+  .nav-cell:hover {
+    transform: scale(1.06);
+  }
 }
 .nav-cell.answered {
   border-style: solid;
@@ -1165,9 +1193,13 @@ table.grid td.num {
   border-right: 1px solid var(--line);
   background: transparent;
 }
-.dock-grip:hover,
 .test.sizing .dock-grip {
   background: var(--accent-soft);
+}
+@media (hover: hover) {
+  .dock-grip:hover {
+    background: var(--accent-soft);
+  }
 }
 .dock-stack {
   flex: 1;
@@ -1229,15 +1261,16 @@ table.grid td.num {
   color: var(--ink-soft);
   text-align: left;
 }
-.rationale-head:hover {
-  color: var(--ink);
+@media (hover: hover) {
+  .rationale-head:hover {
+    color: var(--ink);
+  }
 }
 .rationale-head .chev {
   font-size: 11px;
   color: var(--muted);
 }
-.rationale-text,
-.rationale-crop {
+.rationale-text {
   display: block;
   padding: 0 15px 15px;
 }
@@ -1255,7 +1288,230 @@ table.grid td.num {
   margin-bottom: 0;
 }
 .rationale-crop {
-  max-width: 100%;
+  display: block;
+  margin: 0 15px 15px;
+  max-width: calc(100% - 30px);
   height: auto;
-  box-sizing: content-box;
+}
+
+/* --------------------------------------------------------- увеличение кропа */
+
+/* The button is only a hit area; the crop inside keeps its own size. */
+.crop-btn {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  max-width: 100%;
+  cursor: zoom-in;
+}
+.crop-btn > .rationale-crop {
+  margin: 0;
+}
+.rationale .crop-btn {
+  margin: 0 15px 15px;
+  max-width: calc(100% - 30px);
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+.crop-zoom {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(16, 19, 26, 0.72);
+  backdrop-filter: blur(2px);
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  padding-top: calc(10px + env(safe-area-inset-top));
+  padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  gap: 8px;
+  animation: fade 0.16s ease;
+}
+.crop-zoom-close {
+  align-self: flex-end;
+  flex: none;
+}
+/* Scrolls both ways: a wide table stays at reading size and gets panned. */
+.crop-zoom-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: var(--surface);
+  border-radius: var(--r);
+  padding: 12px;
+  display: flex;
+  align-items: flex-start;
+}
+.crop-zoom-scroll img {
+  height: auto;
+  max-width: none;
+  margin: 0 auto;
+}
+
+/* ------------------------------------------------------------ офлайн-копия */
+
+.offline-card {
+  margin-top: 4px;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--surface-sunk);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+/* Green when the whole base is on disk — the one thing worth glancing at. */
+.offline-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 0 3px var(--ok-soft);
+}
+.offline-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+.offline-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.25s ease;
+}
+
+/* ---------------------------------------------------------------- телефон */
+/* A 390px screen has room for neither two panes nor the full chrome, so the
+   exam becomes one scroll column, the header and footer shrink to a thumb's
+   height, and the notch and home bar get padding of their own. */
+@media (max-width: 560px) {
+  .test-head {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    padding: 7px 11px;
+    padding-top: calc(7px + env(safe-area-inset-top));
+    gap: 8px;
+  }
+  .test-head > .row:first-child {
+    min-width: 0;
+    font-size: 12.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    gap: 5px;
+  }
+  .test-head > .row:first-child strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* Laid out side by side, the clock and its switch cost one line, not two. */
+  .timer-wrap {
+    flex-direction: row;
+    gap: 6px;
+  }
+  .timer {
+    font-size: 18px;
+  }
+  .timer-wrap .btn.sm {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+  .test-head .row .btn.sm {
+    padding: 6px 9px;
+    font-size: 11.5px;
+  }
+
+  /* The passage and the question share one scroll instead of holding two. */
+  .test-body,
+  .test-body.single {
+    display: block;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .pane {
+    overflow: visible;
+    padding: 16px 14px 22px;
+  }
+  .pane.left {
+    padding-bottom: 16px;
+  }
+
+  .passage,
+  .stem {
+    font-size: 16.5px;
+    line-height: 1.58;
+  }
+  .stem {
+    margin-bottom: 18px;
+  }
+  .q-head {
+    margin-bottom: 16px;
+  }
+  /* Finger-sized: the letter and the strike-out button are the small targets. */
+  .choice {
+    padding: 13px;
+    font-size: 16px;
+  }
+  .choice .letter {
+    width: 27px;
+    height: 27px;
+  }
+  .cross-btn {
+    width: 34px;
+    height: 34px;
+    margin-top: 8px;
+  }
+  .verdict {
+    margin-top: 14px;
+  }
+
+  .test-foot {
+    grid-template-columns: auto 1fr;
+    padding: 8px 10px;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+    gap: 8px;
+  }
+  /* The navigation pill already says which question this is. */
+  .test-foot > .small.muted {
+    display: none;
+  }
+  .nav-toggle {
+    padding: 9px 13px;
+    font-size: 12.5px;
+  }
+  .test-foot .btn.sm {
+    padding: 9px 13px;
+    font-size: 13px;
+  }
+  .nav-pop {
+    width: calc(100vw - 16px);
+    bottom: calc(58px + env(safe-area-inset-bottom));
+    padding: 14px;
+  }
+  .nav-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 7px;
+  }
+
+  /* A docked tool takes the whole screen — there is nothing left to share. */
+  .side-dock {
+    --dock-w: 100%;
+  }
+  .dock-grip {
+    display: none;
+  }
+  .dock-stack {
+    padding: 8px;
+    padding-top: calc(8px + env(safe-area-inset-top));
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  }
+
+  .modal {
+    padding: 18px 16px;
+  }
 }

@@ -31,7 +31,13 @@ export interface Question {
 export interface QuestionFile {
   generatedAt: string;
   files: string[];
-  counts: { total: number; new: number };
+  counts: {
+    total: number;
+    new: number;
+    /** Crops on disk, so the phone can say what an offline copy costs. */
+    imageFiles?: number;
+    imageBytes?: number;
+  };
   questions: Question[];
 }
 

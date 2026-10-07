@@ -1,8 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Attempt, FilterState, ModeId, Question, RunPlan, Session } from "./types";
+import type {
+  Attempt,
+  FilterState,
+  ModeId,
+  Question,
+  QuestionFile,
+  RunPlan,
+  Session,
+} from "./types";
 import { buildHistory, buildTaxonomy, loadQuestions, type History } from "./lib/data";
 import { listAttempts, listMarks, putAttempts, putSession } from "./lib/db";
 import { buildPlan } from "./lib/modes";
+import { registerWorker } from "./lib/offline";
 import Home from "./screens/Home";
 import Test from "./screens/Test";
 import Break from "./screens/Break";
@@ -16,6 +25,7 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>("loading");
   const [error, setError] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [counts, setCounts] = useState<QuestionFile["counts"]>({ total: 0, new: 0 });
   const [history, setHistory] = useState<History>(EMPTY_HISTORY);
 
   const [plan, setPlan] = useState<RunPlan | null>(null);
@@ -44,11 +54,16 @@ export default function App() {
     }
   }, []);
 
+  // Registered once, before the data: the worker is what makes a cold start
+  // without network possible at all.
+  useEffect(registerWorker, []);
+
   useEffect(() => {
     (async () => {
       try {
-        const qs = await loadQuestions();
+        const { questions: qs, counts: c } = await loadQuestions();
         setQuestions(qs);
+        setCounts(c);
         // Open on Reading and Writing when it exists, whatever order the
         // parser happened to write the files in.
         const sections = buildTaxonomy(qs).sections;
@@ -164,6 +179,7 @@ export default function App() {
       </header>
       <Home
         questions={questions}
+        counts={counts}
         taxonomy={taxonomy}
         history={history}
         filter={filter}

@@ -6,6 +6,7 @@ import { Crop } from "../components/Crop";
 import DesmosPanel from "../components/DesmosPanel";
 import Reference from "../components/Reference";
 import { setMark } from "../lib/db";
+import { useIsPhone } from "../lib/useIsPhone";
 import { isCorrectAnswer } from "../lib/data";
 
 const LETTERS: Choice[] = ["A", "B", "C", "D"];
@@ -88,6 +89,10 @@ export default function Test({
   const enteredAt = useRef(Date.now());
   const submitted = useRef(false);
   const paneRef = useRef<HTMLDivElement>(null);
+  // On a phone the panes stop scrolling separately and this wrapper scrolls
+  // instead, so moving to the next question has to rewind whichever is live.
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const phone = useIsPhone();
 
   const commitTime = useCallback((qid: string) => {
     const now = Date.now();
@@ -102,6 +107,7 @@ export default function Test({
       setIdx(next);
       setNavOpen(false);
       paneRef.current?.scrollTo({ top: 0 });
+      bodyRef.current?.scrollTo({ top: 0 });
     },
     [commitTime, idx, questions]
   );
@@ -314,7 +320,7 @@ export default function Test({
                   onClick={() => setReference((r) => !r)}
                   title="Справочные формулы, как в Bluebook"
                 >
-                  Reference
+                  {phone ? "Ref" : "Reference"}
                 </button>
                 <button className="btn sm" aria-pressed={desmos} onClick={() => setDesmos((d) => !d)}>
                   Desmos
@@ -327,10 +333,10 @@ export default function Test({
           </div>
         </div>
 
-        <div className={`test-body ${hasLeft ? "" : "single"}`}>
+        <div className={`test-body ${hasLeft ? "" : "single"}`} ref={bodyRef}>
           {hasLeft && (
             <div className="pane left" ref={paneRef}>
-              {q.image && <Crop src={q.image} alt="График или таблица из PDF" />}
+              {q.image && <Crop src={q.image} alt="График или таблица из PDF" zoomable />}
               {q.passage.trim() && <RichText text={q.passage} className="passage" />}
             </div>
           )}
@@ -355,7 +361,9 @@ export default function Test({
               )}
             </div>
 
-            {!hasLeft && q.image && <Crop src={q.image} alt="Формула или график из PDF" />}
+            {!hasLeft && q.image && (
+              <Crop src={q.image} alt="Формула или график из PDF" zoomable />
+            )}
             {!hasLeft && q.passage.trim() && <RichText text={q.passage} className="passage" />}
             {q.stem.trim() && <RichText text={q.stem} className="stem" />}
 
@@ -444,7 +452,12 @@ export default function Test({
                   (q.rationaleImage ? (
                     // Maths explanations are half formulas, so the PDF crop is the
                     // only faithful version; the text one has holes where they were.
-                    <Crop className="rationale-crop" src={q.rationaleImage} alt="Разбор из PDF" />
+                    <Crop
+                className="rationale-crop"
+                src={q.rationaleImage}
+                alt="Разбор из PDF"
+                zoomable
+              />
                   ) : (
                     <RichText text={q.rationale} className="rationale-text" />
                   ))}
@@ -461,8 +474,13 @@ export default function Test({
             Вопрос {idx + 1} из {questions.length} ▲
           </button>
           <div className="row" style={{ justifyContent: "flex-end" }}>
-            <button className="btn sm" disabled={idx === 0} onClick={() => go(idx - 1)}>
-              Назад
+            <button
+              className="btn sm"
+              disabled={idx === 0}
+              onClick={() => go(idx - 1)}
+              aria-label="Предыдущий вопрос"
+            >
+              {phone ? "←" : "Назад"}
             </button>
             {instant && (
               <button
@@ -479,7 +497,7 @@ export default function Test({
                 className={`btn sm ${canConfirm ? "" : "primary"}`}
                 onClick={() => go(idx + 1)}
               >
-                {instant ? "След. вопрос" : "Далее"}
+                {phone ? "→" : instant ? "След. вопрос" : "Далее"}
               </button>
             ) : (
               <button
@@ -569,8 +587,8 @@ export default function Test({
 
             {remaining != null && remaining > 60 && (
               <div className="banner warn">
-                Осталось {Math.ceil(remaining / 60)} мин. Вернись к отмеченным вопросам и к
-                Craft/Information.
+                Осталось {Math.ceil(remaining / 60)} мин — хватит, чтобы вернуться к отмеченным
+                и к тем, что без ответа.
               </div>
             )}
 

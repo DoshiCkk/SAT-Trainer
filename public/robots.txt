@@ -1,0 +1,3 @@
+# Personal study material — not for indexing.
+User-agent: *
+Disallow: /

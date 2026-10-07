@@ -37,7 +37,12 @@ export interface Taxonomy {
   difficulties: string[];
 }
 
-export async function loadQuestions(): Promise<Question[]> {
+export interface Loaded {
+  questions: Question[];
+  counts: QuestionFile["counts"];
+}
+
+export async function loadQuestions(): Promise<Loaded> {
   const res = await fetch(`${import.meta.env.BASE_URL}questions.json`);
   if (!res.ok) {
     throw new Error(
@@ -47,7 +52,10 @@ export async function loadQuestions(): Promise<Question[]> {
   const data = (await res.json()) as QuestionFile;
   // A question whose key the export never states cannot be scored, so it is not
   // offered; the parser reports it under "Без ключа".
-  return data.questions.filter((q) => q.correct.length > 0);
+  return {
+    questions: data.questions.filter((q) => q.correct.length > 0),
+    counts: data.counts,
+  };
 }
 
 function byOrder(order: string[]) {

@@ -1,8 +1,17 @@
 import { useMemo } from "react";
-import type { FilterState, ModeId, Question, Section, StatusFilter } from "../types";
+import type {
+  FilterState,
+  ModeId,
+  Question,
+  QuestionFile,
+  Section,
+  StatusFilter,
+} from "../types";
 import type { History, Taxonomy } from "../lib/data";
 import { applyFilters } from "../lib/filters";
 import { MODES, buildPlan } from "../lib/modes";
+import OfflineCard from "../components/OfflineCard";
+import { useIsPhone } from "../lib/useIsPhone";
 
 const STATUS_LABELS: Record<StatusFilter, string> = {
   all: "Все",
@@ -13,6 +22,7 @@ const STATUS_LABELS: Record<StatusFilter, string> = {
 
 interface Props {
   questions: Question[];
+  counts: QuestionFile["counts"];
   taxonomy: Taxonomy;
   history: History;
   filter: FilterState;
@@ -20,7 +30,15 @@ interface Props {
   onStart: (mode: ModeId) => void;
 }
 
-export default function Home({ questions, taxonomy, history, filter, setFilter, onStart }: Props) {
+export default function Home({
+  questions,
+  counts,
+  taxonomy,
+  history,
+  filter,
+  setFilter,
+  onStart,
+}: Props) {
   const available = useMemo(
     () => applyFilters(questions, filter, history),
     [questions, filter, history]
@@ -56,6 +74,8 @@ export default function Home({ questions, taxonomy, history, filter, setFilter, 
     });
   }
 
+  const phone = useIsPhone();
+
   const modeStates = MODES.map((m) => {
     const hasSection = taxonomy.sections.includes(m.section);
     const result = hasSection ? buildPlan(m.id, questions, filter, history) : null;
@@ -75,7 +95,7 @@ export default function Home({ questions, taxonomy, history, filter, setFilter, 
               onClick={() => setSection(s)}
               title={taxonomy.sections.includes(s) ? undefined : "Нет данных: добавь PDF и запусти npm run parse"}
             >
-              {s === "Math" ? "Math" : "Reading and Writing"}
+              {s === "Math" ? "Math" : phone ? "R&W" : "Reading and Writing"}
             </button>
           ))}
         </div>
@@ -269,6 +289,8 @@ export default function Home({ questions, taxonomy, history, filter, setFilter, 
               Выбрано доменов: {activeDomains.length} из {domains.length}
               {filter.skills.length > 0 && ` · скиллов: ${filter.skills.length}`}
             </div>
+
+            <OfflineCard questions={questions} counts={counts} />
           </div>
         </aside>
       </div>

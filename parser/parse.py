@@ -894,10 +894,31 @@ def main():
     order = {qid: i for i, qid in enumerate(old)}
     questions.sort(key=lambda q: (order.get(q["id"], 10 ** 6), q["sourceFile"], q["id"]))
 
+    crop_names = set()
+    for q in questions:
+        for key in ("image", "choicesImage", "rationaleImage"):
+            if q.get(key):
+                crop_names.add(q[key])
+        for src in (q.get("choiceImages") or {}).values():
+            if src:
+                crop_names.add(src)
+    crop_bytes = 0
+    for rel in crop_names:
+        path = os.path.join(ROOT, "public", rel.replace("/", os.sep))
+        if os.path.exists(path):
+            crop_bytes += os.path.getsize(path)
+
     payload = {
         "generatedAt": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "files": files,
-        "counts": {"total": len(questions), "new": len(new_ids)},
+        # The phone shows this before offering to pull everything for offline
+        # use, so it has to come from the crops actually on disk.
+        "counts": {
+            "total": len(questions),
+            "new": len(new_ids),
+            "imageFiles": len(crop_names),
+            "imageBytes": crop_bytes,
+        },
         "questions": questions,
     }
     with open(args.out, "w", encoding="utf-8") as f:
