@@ -34,10 +34,15 @@ export default function OfflineCard({
 
   useEffect(() => {
     if (!supported) return;
-    void navigator.serviceWorker
-      .getRegistration()
-      .then((reg) => setHasWorker(Boolean(reg?.active)))
-      .catch(() => setHasWorker(false));
+    let alive = true;
+    void navigator.serviceWorker.ready
+      .then(() => {
+        if (alive) setHasWorker(true);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
   }, [supported]);
 
   useEffect(() => {
