@@ -1,0 +1,15 @@
+node_modules
+dist
+tsconfig.tsbuildinfo
+
+# ключ Desmos
+.env
+.env.local
+
+# материалы College Board и всё, что из них разобрано — только локально
+Themes/
+public/questions.json
+public/img/
+
+# рабочие скриншоты
+Снимок экрана*.png
