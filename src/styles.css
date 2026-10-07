@@ -1203,3 +1203,59 @@ table.grid td.num {
     box-shadow: var(--shadow-lg);
   }
 }
+
+/* ------------------------------------------------- разбор из PDF (rationale) */
+
+.rationale {
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--surface-sunk);
+  overflow: hidden;
+  animation: rise 0.28s ease-out 0.18s backwards;
+}
+.rationale-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 15px;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 650;
+  color: var(--ink-soft);
+  text-align: left;
+}
+.rationale-head:hover {
+  color: var(--ink);
+}
+.rationale-head .chev {
+  font-size: 11px;
+  color: var(--muted);
+}
+.rationale-text,
+.rationale-crop {
+  display: block;
+  padding: 0 15px 15px;
+}
+.rationale-text {
+  font-family: var(--serif);
+  font-size: 15.5px;
+  line-height: 1.62;
+  color: var(--ink-soft);
+  max-width: 64ch;
+}
+.rationale-text p {
+  margin: 0 0 0.9em;
+}
+.rationale-text p:last-child {
+  margin-bottom: 0;
+}
+.rationale-crop {
+  max-width: 100%;
+  height: auto;
+  box-sizing: content-box;
+}

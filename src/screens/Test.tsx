@@ -77,6 +77,8 @@ export default function Test({
   const refAlive = useLingering(reference, DOCK_MS);
   const desmosAlive = useLingering(desmos, DOCK_MS);
   const [dockW, setDockW] = useState<number | null>(null);
+  /** The PDF's own explanation, shown once the answer has been checked. */
+  const [showWhy, setShowWhy] = useState(true);
   const [sizing, setSizing] = useState(false);
 
   const q = questions[idx];
@@ -277,6 +279,7 @@ export default function Test({
     return isKey ? "reveal" : null;
   };
   const keyText = q.correct.join(" или ");
+  const hasWhy = Boolean(q.rationaleImage) || q.rationale.trim().length > 0;
 
   return (
     <div className={`test ${dockOpen ? "docked" : ""} ${sizing ? "sizing" : ""}`}>
@@ -424,6 +427,27 @@ export default function Test({
                 <span>
                   {givenIsRight ? "Верно" : `Неверно · правильный ответ: ${keyText}`}
                 </span>
+              </div>
+            )}
+
+            {marked_ && hasWhy && (
+              <div className="rationale">
+                <button
+                  className="rationale-head"
+                  aria-expanded={showWhy}
+                  onClick={() => setShowWhy((w) => !w)}
+                >
+                  <span>Разбор — почему именно этот ответ</span>
+                  <span className="chev">{showWhy ? "▴" : "▾"}</span>
+                </button>
+                {showWhy &&
+                  (q.rationaleImage ? (
+                    // Maths explanations are half formulas, so the PDF crop is the
+                    // only faithful version; the text one has holes where they were.
+                    <Crop className="rationale-crop" src={q.rationaleImage} alt="Разбор из PDF" />
+                  ) : (
+                    <RichText text={q.rationale} className="rationale-text" />
+                  ))}
               </div>
             )}
           </div>
