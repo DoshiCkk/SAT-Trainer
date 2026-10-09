@@ -81,6 +81,22 @@ export async function setReason(key: string, reason: ErrorReason | undefined): P
 
 export const putSession = (s: Session) => tx("sessions", "readwrite", (st) => st.put(s));
 
+/** Merge fields into a stored session, e.g. the score once a test is done. */
+export async function updateSession(id: string, patch: Partial<Session>): Promise<void> {
+  const db = await open();
+  await new Promise<void>((resolve, reject) => {
+    const t = db.transaction("sessions", "readwrite");
+    const store = t.objectStore("sessions");
+    const get = store.get(id);
+    get.onsuccess = () => {
+      const row = get.result as Session | undefined;
+      if (row) store.put({ ...row, ...patch });
+    };
+    t.oncomplete = () => resolve();
+    t.onerror = () => reject(t.error);
+  });
+}
+
 export async function listMarks(): Promise<string[]> {
   const rows = await tx<{ questionId: string }[]>("marks", "readonly", (s) => s.getAll());
   return rows.map((r) => r.questionId);

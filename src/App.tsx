@@ -3,14 +3,24 @@ import type {
   Attempt,
   FilterState,
   ModeId,
+  PracticeScore,
   Question,
   QuestionFile,
   RunPlan,
   Session,
 } from "./types";
 import { buildHistory, buildTaxonomy, loadQuestions, type History } from "./lib/data";
-import { listAttempts, listMarks, putAttempts, putSession } from "./lib/db";
+import {
+  listAttempts,
+  listMarks,
+  listSessions,
+  putAttempts,
+  putSession,
+  updateSession,
+} from "./lib/db";
 import { buildPlan } from "./lib/modes";
+import { buildPractice, routeNext, scorePractice, type PracticeScope } from "./lib/practice";
+import { clearRun, loadRun, saveRun, type ModuleSnapshot, type SavedRun } from "./lib/resume";
 import { registerWorker } from "./lib/offline";
 import Home from "./screens/Home";
 import Test from "./screens/Test";
@@ -27,11 +37,18 @@ export default function App() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [counts, setCounts] = useState<QuestionFile["counts"]>({ total: 0, new: 0 });
   const [history, setHistory] = useState<History>(EMPTY_HISTORY);
+  const [sessions, setSessions] = useState<Session[]>([]);
 
   const [plan, setPlan] = useState<RunPlan | null>(null);
   const [moduleIndex, setModuleIndex] = useState(0);
   const [sessionId, setSessionId] = useState("");
   const [runAttempts, setRunAttempts] = useState<Attempt[]>([]);
+  /** Where the module about to mount should start; set only on resume. */
+  const [snapshot, setSnapshot] = useState<ModuleSnapshot | undefined>();
+  const [breakLeft, setBreakLeft] = useState(0);
+  const [score, setScore] = useState<PracticeScore | null>(null);
+  /** A run left unfinished, offered on the home screen. */
+  const [pending, setPending] = useState<SavedRun | null>(null);
 
   const [filter, setFilter] = useState<FilterState>({
     section: "Reading and Writing",
@@ -46,8 +63,13 @@ export default function App() {
 
   const refreshHistory = useCallback(async () => {
     try {
-      const [attempts, marks] = await Promise.all([listAttempts(), listMarks()]);
+      const [attempts, marks, sess] = await Promise.all([
+        listAttempts(),
+        listMarks(),
+        listSessions(),
+      ]);
       setHistory(buildHistory(attempts, marks));
+      setSessions(sess);
     } catch {
       // Private mode or blocked storage: run without history rather than hang.
       setHistory(EMPTY_HISTORY);
@@ -64,6 +86,7 @@ export default function App() {
         const { questions: qs, counts: c } = await loadQuestions();
         setQuestions(qs);
         setCounts(c);
+        setPending(loadRun(qs));
         // Open on Reading and Writing when it exists, whatever order the
         // parser happened to write the files in.
         const sections = buildTaxonomy(qs).sections;
@@ -79,52 +102,142 @@ export default function App() {
 
   const taxonomy = useMemo(() => buildTaxonomy(questions), [questions]);
 
-  const start = useCallback(
-    (mode: ModeId) => {
-      const { plan: p } = buildPlan(mode, questions, filter, history);
-      if (!p || p.modules.every((m) => m.questions.length === 0)) return;
+  const begin = useCallback(
+    (p: RunPlan) => {
+      if (p.modules.every((m) => m.questions.length === 0)) return;
+      if (pending && !window.confirm("Незаконченный тест будет удалён. Начать новый?")) return;
       const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const session: Session = {
         id,
-        mode,
+        mode: p.mode,
         label: p.label,
         startedAt: Date.now(),
         moduleCount: p.modules.length,
       };
       void putSession(session);
+      saveRun({ sessionId: id, plan: p, moduleIndex: 0, screen: "test" });
       setSessionId(id);
       setPlan(p);
       setModuleIndex(0);
       setRunAttempts([]);
+      setSnapshot(undefined);
+      setScore(null);
+      setPending(null);
       setScreen("test");
     },
-    [filter, history, questions]
+    [pending]
+  );
+
+  const start = useCallback(
+    (mode: ModeId) => {
+      const { plan: p } = buildPlan(mode, questions, filter, history);
+      if (p) begin(p);
+    },
+    [begin, filter, history, questions]
+  );
+
+  const startPractice = useCallback(
+    (scope: PracticeScope) => begin(buildPractice(scope, questions, history).plan),
+    [begin, history, questions]
+  );
+
+  const resume = useCallback(async () => {
+    if (!pending) return;
+    let done: Attempt[] = [];
+    try {
+      done = (await listAttempts()).filter((a) => a.sessionId === pending.sessionId);
+    } catch {
+      // Without them a practice test still resumes; only its score would suffer.
+    }
+    setSessionId(pending.sessionId);
+    setPlan(pending.plan);
+    setModuleIndex(pending.moduleIndex);
+    setRunAttempts(done);
+    setSnapshot(pending.snapshot);
+    setBreakLeft(pending.breakLeft ?? 0);
+    setScore(null);
+    setPending(null);
+    setScreen(pending.screen === "break" && pending.breakLeft ? "break" : "test");
+  }, [pending]);
+
+  const discard = useCallback(() => {
+    clearRun();
+    setPending(null);
+  }, []);
+
+  const onSnapshot = useCallback(
+    (s: ModuleSnapshot) => {
+      if (plan) saveRun({ sessionId, plan, moduleIndex, screen: "test", snapshot: s });
+    },
+    [moduleIndex, plan, sessionId]
   );
 
   const submitModule = useCallback(
     async (rows: Attempt[]) => {
-      await putAttempts(rows);
-      const all = [...runAttempts, ...rows];
-      setRunAttempts(all);
       if (!plan) return;
+      const mod = plan.modules[moduleIndex];
+      const pre = new Set(mod.pretest ?? []);
+      const tagged = rows.map((r) => (pre.has(r.questionId) ? { ...r, pretest: true } : r));
+      await putAttempts(tagged);
+      const all = [...runAttempts, ...tagged];
+      setRunAttempts(all);
+      // An adaptive second module is settled the moment the first one is in.
+      const routed = routeNext(plan, moduleIndex, all);
+      setPlan(routed);
+      setSnapshot(undefined);
+
       const next = moduleIndex + 1;
-      if (next < plan.modules.length) {
+      if (next < routed.modules.length) {
+        const rest = (mod.breakAfter ?? 0) * 60;
+        saveRun({
+          sessionId,
+          plan: routed,
+          moduleIndex: next,
+          screen: rest ? "break" : "test",
+          breakLeft: rest || undefined,
+        });
         setModuleIndex(next);
-        setScreen(plan.breakMinutes ? "break" : "test");
-      } else {
-        await refreshHistory();
-        setScreen("results");
+        setBreakLeft(rest);
+        setScreen(rest ? "break" : "test");
+        return;
       }
+
+      clearRun();
+      const result = routed.mode === "practice" ? scorePractice(routed, all) : null;
+      setScore(result);
+      try {
+        await updateSession(sessionId, { endedAt: Date.now(), ...(result ? { score: result } : {}) });
+      } catch {
+        // The score is still on screen; it just will not be listed later.
+      }
+      await refreshHistory();
+      setScreen("results");
     },
-    [moduleIndex, plan, refreshHistory, runAttempts]
+    [moduleIndex, plan, refreshHistory, runAttempts, sessionId]
   );
 
+  const breakTick = useCallback(
+    (left: number) => {
+      if (plan) saveRun({ sessionId, plan, moduleIndex, screen: "break", breakLeft: left });
+    },
+    [moduleIndex, plan, sessionId]
+  );
+
+  const breakDone = useCallback(() => {
+    if (plan) saveRun({ sessionId, plan, moduleIndex, screen: "test" });
+    setScreen("test");
+  }, [moduleIndex, plan, sessionId]);
+
+  // Leaving a test pauses it: the snapshot is already saved, so the home
+  // screen simply offers it back.
   const goHome = useCallback(async () => {
     await refreshHistory();
     setPlan(null);
     setRunAttempts([]);
+    setScore(null);
+    setPending(loadRun(questions));
     setScreen("home");
-  }, [refreshHistory]);
+  }, [questions, refreshHistory]);
 
   if (error) {
     return (
@@ -151,6 +264,8 @@ export default function App() {
         moduleIndex={moduleIndex}
         sessionId={sessionId}
         markedIds={history.marked}
+        initial={snapshot}
+        onSnapshot={onSnapshot}
         onSubmit={submitModule}
         onAbort={goHome}
       />
@@ -160,14 +275,16 @@ export default function App() {
   if (screen === "break" && plan) {
     return (
       <Break
-        minutes={plan.breakMinutes ?? 10}
-        onDone={() => setScreen("test")}
+        seconds={breakLeft || 600}
+        next={plan.modules[moduleIndex].label}
+        onTick={breakTick}
+        onDone={breakDone}
       />
     );
   }
 
   if (screen === "results" && plan) {
-    return <Results plan={plan} attempts={runAttempts} onHome={goHome} />;
+    return <Results plan={plan} attempts={runAttempts} score={score} onHome={goHome} />;
   }
 
   return (
@@ -182,9 +299,14 @@ export default function App() {
         counts={counts}
         taxonomy={taxonomy}
         history={history}
+        sessions={sessions}
+        pending={pending}
         filter={filter}
         setFilter={setFilter}
         onStart={start}
+        onStartPractice={startPractice}
+        onResume={resume}
+        onDiscard={discard}
       />
     </div>
   );

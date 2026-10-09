@@ -384,6 +384,150 @@ code {
   font-size: 13px;
 }
 
+/* ------------------------------------------------------- practice test */
+
+.practice {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 24px;
+  border: 1px solid var(--accent-line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  padding: 20px 22px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 26px;
+}
+.practice-title {
+  font-size: 19px;
+}
+.practice-badge {
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #203a9e;
+  background: var(--accent-soft);
+  border-radius: 999px;
+  padding: 3px 9px;
+}
+.practice-past {
+  border-left: 1px solid var(--line);
+  padding-left: 22px;
+  min-width: 0;
+}
+.practice-past ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.practice-past li {
+  display: grid;
+  grid-template-columns: 52px 48px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13.5px;
+}
+.practice-past-num {
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+}
+
+.resume-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  border: 1px solid var(--warn-line);
+  background: var(--warn-soft);
+  border-radius: var(--r);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.score-card {
+  display: grid;
+  gap: 20px;
+}
+.score-total {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.score-total-num {
+  font-size: 52px;
+  font-weight: 750;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.score-row {
+  display: grid;
+  gap: 8px;
+}
+.score-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.score-name {
+  font-weight: 600;
+}
+.score-num {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.score-track {
+  position: relative;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-sunk);
+  border: 1px solid var(--line);
+}
+.score-band {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  border-radius: 999px;
+  background: var(--accent-line);
+}
+.score-dot {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+.score-meta {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+@media (max-width: 760px) {
+  .practice {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    padding: 16px;
+  }
+  .practice-past {
+    border-left: 0;
+    padding-left: 0;
+    border-top: 1px solid var(--line);
+    padding-top: 14px;
+  }
+}
+
 .sticky-side {
   position: sticky;
   top: 84px;
@@ -866,9 +1010,26 @@ table.grid th {
 table.grid tr:last-child td {
   border-bottom: 0;
 }
-table.grid td.num {
+table.grid td.num,
+table.grid th.num {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+@media (max-width: 560px) {
+  table.grid {
+    font-size: 13.5px;
+  }
+  table.grid th,
+  table.grid td {
+    padding: 8px 6px;
+  }
+  table.grid th {
+    font-size: 11px;
+    letter-spacing: 0.02em;
+  }
+  .score-total-num {
+    font-size: 44px;
+  }
 }
 
 @media (max-width: 980px) {

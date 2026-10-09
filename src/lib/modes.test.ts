@@ -49,7 +49,11 @@ check(
   tax.skills["Information and Ideas"].join(" | ") === SKILL_ORDER["Information and Ideas"].join(" | "),
   tax.skills["Information and Ideas"].join(" | ")
 );
-check("сложности только из данных", tax.difficulties.join(",") === "Hard", tax.difficulties.join(","));
+check(
+  "сложности из данных, по возрастанию",
+  tax.difficulties.join(",") === "Easy,Medium,Hard",
+  tax.difficulties.join(",")
+);
 
 // --- R&W module proportions
 const rw = buildPlan("rw-module", questions, baseFilter, emptyHistory);
@@ -73,6 +77,16 @@ check(
   seq.every((v, i) => i === 0 || v >= seq[i - 1]),
   mod.questions.map((q) => q.domain[0]).join("")
 );
+const diffRank = (d: string) => ["Easy", "Medium", "Hard"].indexOf(d);
+check(
+  "внутри скилла — от лёгких к сложным",
+  mod.questions.every(
+    (q, i) =>
+      i === 0 ||
+      q.skill !== mod.questions[i - 1].skill ||
+      diffRank(q.difficulty) >= diffRank(mod.questions[i - 1].difficulty)
+  )
+);
 const uniq = new Set(mod.questions.map((q) => q.id));
 check("без дублей внутри модуля", uniq.size === mod.questions.length);
 
@@ -80,7 +94,7 @@ check("без дублей внутри модуля", uniq.size === mod.questio
 const end = buildPlan("endurance", questions, baseFilter, emptyHistory);
 const [m1, m2] = end.plan!.modules;
 check("выносливость: 2 модуля по 27", m1.questions.length === 27 && m2.questions.length === 27);
-check("перерыв 10 мин", end.plan!.breakMinutes === 10);
+check("перерыв 10 мин после модуля 1", m1.breakAfter === 10 && m2.breakAfter === undefined);
 check("результаты между модулями скрыты", end.plan!.hideResultsBetween === true);
 const ids1 = new Set(m1.questions.map((q) => q.id));
 check(
@@ -88,7 +102,7 @@ check(
   m2.questions.every((q) => !ids1.has(q.id))
 );
 
-// --- Math module: only Advanced Math has been exported so far
+// --- Math module
 const math = buildPlan("math-module", questions, baseFilter, emptyHistory);
 const mq = math.plan!.modules[0];
 check("модуль Math: 22 вопроса", mq.questions.length === 22, String(mq.questions.length));
@@ -97,17 +111,32 @@ check(
   "модуль Math: только из секции Math",
   mq.questions.every((q) => q.section === "Math")
 );
+const mathCounts: Record<string, number> = {};
+for (const q of mq.questions) mathCounts[q.domain] = (mathCounts[q.domain] ?? 0) + 1;
 check(
-  "модуль Math: нехватка трёх доменов в отчёте",
-  ["Algebra", "Problem-Solving and Data Analysis", "Geometry and Trigonometry"].every((d) =>
-    math.shortfalls.some((s) => s.domain === d)
+  "модуль Math: 8/8/3/3 по доменам",
+  mathCounts["Algebra"] === 8 &&
+    mathCounts["Advanced Math"] === 8 &&
+    mathCounts["Problem-Solving and Data Analysis"] === 3 &&
+    mathCounts["Geometry and Trigonometry"] === 3,
+  JSON.stringify(mathCounts)
+);
+check("модуль Math: нехваток нет", math.shortfalls.length === 0, JSON.stringify(math.shortfalls));
+check(
+  "модуль Math: домены вперемешку, от лёгких к сложным",
+  mq.questions.every(
+    (q, i) => i === 0 || diffRank(q.difficulty) >= diffRank(mq.questions[i - 1].difficulty)
   ),
-  JSON.stringify(math.shortfalls.map((s) => s.domain))
+  mq.questions.map((q) => q.difficulty[0]).join("")
 );
 
 // --- Math data integrity: formulas live in crops, so those must be present
 const mathQs = questions.filter((q) => q.section === "Math");
-check("Math: 197 вопросов с ключом", mathQs.length === 197, String(mathQs.length));
+check(
+  "Math: все четыре домена",
+  new Set(mathQs.map((q) => q.domain)).size === 4,
+  [...new Set(mathQs.map((q) => q.domain))].join(", ")
+);
 check(
   "Math: у каждого вопроса есть ключ",
   mathQs.every((q) => q.correct.length > 0)

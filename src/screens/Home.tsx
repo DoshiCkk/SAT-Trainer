@@ -5,12 +5,16 @@ import type {
   Question,
   QuestionFile,
   Section,
+  Session,
   StatusFilter,
 } from "../types";
 import type { History, Taxonomy } from "../lib/data";
 import { applyFilters } from "../lib/filters";
 import { MODES, buildPlan } from "../lib/modes";
+import type { PracticeScope } from "../lib/practice";
+import type { SavedRun } from "../lib/resume";
 import OfflineCard from "../components/OfflineCard";
+import PracticeCard from "../components/PracticeCard";
 import { useIsPhone } from "../lib/useIsPhone";
 
 const STATUS_LABELS: Record<StatusFilter, string> = {
@@ -25,9 +29,63 @@ interface Props {
   counts: QuestionFile["counts"];
   taxonomy: Taxonomy;
   history: History;
+  sessions: Session[];
+  pending: SavedRun | null;
   filter: FilterState;
   setFilter: (f: FilterState) => void;
   onStart: (mode: ModeId) => void;
+  onStartPractice: (scope: PracticeScope) => void;
+  onResume: () => void;
+  onDiscard: () => void;
+}
+
+function mmss(sec: number): string {
+  const s = Math.max(0, Math.round(sec));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+/** The run that was left mid-way, with where exactly it stopped. */
+function ResumeCard({
+  run,
+  onResume,
+  onDiscard,
+}: {
+  run: SavedRun;
+  onResume: () => void;
+  onDiscard: () => void;
+}) {
+  const mod = run.plan.modules[run.moduleIndex];
+  const snap = run.snapshot;
+  const where =
+    run.screen === "break" && run.breakLeft
+      ? `перерыв · дальше ${mod.label}`
+      : [
+          mod.label,
+          `вопрос ${(snap?.idx ?? 0) + 1} из ${mod.questions.length}`,
+          snap?.remaining != null
+            ? `осталось ${mmss(snap.remaining)}`
+            : mod.minutes != null
+              ? `${mod.minutes} мин`
+              : null,
+        ]
+          .filter(Boolean)
+          .join(" · ");
+  return (
+    <div className="resume-card">
+      <div style={{ minWidth: 0 }}>
+        <strong>Не закончено: {run.plan.label}</strong>
+        <div className="small muted">{where}</div>
+      </div>
+      <div className="row" style={{ gap: 6 }}>
+        <button className="btn primary sm" onClick={onResume}>
+          Продолжить
+        </button>
+        <button className="btn ghost sm" onClick={onDiscard}>
+          Удалить
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default function Home({
@@ -35,9 +93,14 @@ export default function Home({
   counts,
   taxonomy,
   history,
+  sessions,
+  pending,
   filter,
   setFilter,
   onStart,
+  onStartPractice,
+  onResume,
+  onDiscard,
 }: Props) {
   const available = useMemo(
     () => applyFilters(questions, filter, history),
@@ -85,6 +148,16 @@ export default function Home({
 
   return (
     <div className="wrap">
+      {pending && <ResumeCard run={pending} onResume={onResume} onDiscard={onDiscard} />}
+
+      <PracticeCard
+        questions={questions}
+        history={history}
+        sessions={sessions}
+        sections={taxonomy.sections}
+        onStart={onStartPractice}
+      />
+
       <div className="row" style={{ marginBottom: 20, gap: 16 }}>
         <div className="section-tabs">
           {(["Reading and Writing", "Math"] as Section[]).map((s) => (

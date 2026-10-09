@@ -1,6 +1,9 @@
 import type { Attempt, Question, QuestionFile, Section } from "../types";
 
-/** Bluebook presents a module in this order; the parser has no say in it. */
+/**
+ * Bluebook order of the Reading and Writing domains; the parser has no say in
+ * it. Math mixes its domains within a module, so there it only orders the UI.
+ */
 export const DOMAIN_ORDER: Record<Section, string[]> = {
   "Reading and Writing": [
     "Craft and Structure",
@@ -129,15 +132,24 @@ export function isCorrectAnswer(q: Question, given: string | null): boolean {
   return q.correct.some((c) => norm(c) === norm(given));
 }
 
+/**
+ * Bluebook order. Reading and Writing groups questions by skill in a fixed
+ * order, each group running from easiest to hardest; Math mixes its domains and
+ * runs the whole module from easiest to hardest. Ties keep the order they came
+ * in, which the pickers have already shuffled.
+ */
 export function sortForModule(questions: Question[]): Question[] {
+  const diff = byOrder(DIFFICULTY_ORDER);
   return [...questions].sort((a, b) => {
     if (a.section !== b.section) {
       return byOrder(["Reading and Writing", "Math"])(a.section, b.section);
     }
-    const dord = DOMAIN_ORDER[a.section] ?? [];
-    const d = byOrder(dord)(a.domain, b.domain);
+    if (a.section === "Math") return diff(a.difficulty, b.difficulty);
+    const d = byOrder(DOMAIN_ORDER[a.section] ?? [])(a.domain, b.domain);
     if (d !== 0) return d;
-    return byOrder(SKILL_ORDER[a.domain] ?? [])(a.skill, b.skill);
+    const s = byOrder(SKILL_ORDER[a.domain] ?? [])(a.skill, b.skill);
+    if (s !== 0) return s;
+    return diff(a.difficulty, b.difficulty);
   });
 }
 

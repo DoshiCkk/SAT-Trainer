@@ -65,9 +65,40 @@ export interface Attempt {
   marked: boolean;
   at: number;
   reason?: ErrorReason;
+  /** Tried out on a practice test without counting, like pretest questions. */
+  pretest?: boolean;
 }
 
-export type ModeId = "rw-module" | "math-module" | "endurance" | "focus" | "custom";
+export type ModeId =
+  | "rw-module"
+  | "math-module"
+  | "endurance"
+  | "focus"
+  | "custom"
+  | "practice";
+
+/** Which second module the first one led to. */
+export type Route = "easy" | "hard";
+
+export interface SectionScore {
+  section: Section;
+  score: number;
+  /** One standard error either way, as on a College Board score report. */
+  low: number;
+  high: number;
+  route: Route;
+  /** Scored questions only; the pretest ones are left out, as on the test. */
+  first: { right: number; of: number };
+  second: { right: number; of: number };
+}
+
+export interface PracticeScore {
+  /** 400–1600; only when both sections were taken. */
+  total: number | null;
+  low: number | null;
+  high: number | null;
+  sections: SectionScore[];
+}
 
 export interface Session {
   id: string;
@@ -76,6 +107,7 @@ export interface Session {
   startedAt: number;
   endedAt?: number;
   moduleCount: number;
+  score?: PracticeScore;
 }
 
 export type StatusFilter = "all" | "new" | "wrong" | "marked";
@@ -97,13 +129,23 @@ export interface ModulePlan {
   questions: Question[];
   minutes: number | null;
   label: string;
+  /** Minutes of rest once this module is submitted. */
+  breakAfter?: number;
+  section?: Section;
+  /** Ids answered but not scored: the practice test's pretest questions. */
+  pretest?: string[];
+  /**
+   * An adaptive second module: both versions are drawn up front and the first
+   * module's result picks one. Until then `questions` is empty.
+   */
+  routes?: Record<Route, ModulePlan>;
+  route?: Route;
 }
 
 export interface RunPlan {
   mode: ModeId;
   label: string;
   modules: ModulePlan[];
-  breakMinutes: number | null;
   /** Endurance hides per-module results until the whole run ends. */
   hideResultsBetween: boolean;
   /** Colour each answer the moment it is given; never on in endurance. */

@@ -111,7 +111,6 @@ export function buildPlan(
         modules: [
           { questions: sortForModule(questions), minutes: filter.timer ? spec.minutes : null, label: "Модуль" },
         ],
-        breakMinutes: null,
         hideResultsBetween: false,
         instantFeedback: filter.instantFeedback,
       },
@@ -131,10 +130,14 @@ export function buildPlan(
         mode,
         label: "Выносливость",
         modules: [
-          { questions: sortForModule(first.questions), minutes: RW_MODULE.minutes, label: "Модуль 1" },
+          {
+            questions: sortForModule(first.questions),
+            minutes: RW_MODULE.minutes,
+            label: "Модуль 1",
+            breakAfter: BREAK_MINUTES,
+          },
           { questions: sortForModule(second.questions), minutes: RW_MODULE.minutes, label: "Модуль 2" },
         ],
-        breakMinutes: BREAK_MINUTES,
         hideResultsBetween: true,
         // The point of this mode is two modules with nothing in between, so
         // per-question feedback stays off here whatever the switch says.
@@ -166,7 +169,6 @@ export function buildPlan(
           label: "Набор",
         },
       ],
-      breakMinutes: null,
       hideResultsBetween: false,
       instantFeedback: filter.instantFeedback,
     },

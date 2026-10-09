@@ -41,6 +41,24 @@ export interface Picked {
   shortfalls: Shortfall[];
 }
 
+/** Whole counts in proportion to `weights` that add up to exactly `total`. */
+export function apportion(total: number, weights: Record<string, number>): Record<string, number> {
+  const keys = Object.keys(weights);
+  const exact = keys.map((k) => total * weights[k]);
+  const want: Record<string, number> = {};
+  let assigned = 0;
+  keys.forEach((k, i) => {
+    want[k] = Math.floor(exact[i]);
+    assigned += want[k];
+  });
+  // hand out the remainder to the largest fractional parts
+  const rema = keys
+    .map((k, i) => ({ k, frac: exact[i] - Math.floor(exact[i]) }))
+    .sort((a, b) => b.frac - a.frac);
+  for (let i = 0; assigned < total && i < rema.length; i++, assigned++) want[rema[i].k]++;
+  return want;
+}
+
 /**
  * Pick `total` questions spread across domains by the given weights, topping up
  * from whichever domains still have spare questions so a thin domain does not
@@ -60,18 +78,7 @@ export function pickByWeights(
   }
 
   const domains = Object.keys(weights);
-  const exact = domains.map((d) => total * weights[d]);
-  const want: Record<string, number> = {};
-  let assigned = 0;
-  domains.forEach((d, i) => {
-    want[d] = Math.floor(exact[i]);
-    assigned += want[d];
-  });
-  // hand out the remainder to the largest fractional parts
-  const rema = domains
-    .map((d, i) => ({ d, frac: exact[i] - Math.floor(exact[i]) }))
-    .sort((a, b) => b.frac - a.frac);
-  for (let i = 0; assigned < total && i < rema.length; i++, assigned++) want[rema[i].d]++;
+  const want = apportion(total, weights);
 
   const out: Question[] = [];
   const shortfalls: Shortfall[] = [];

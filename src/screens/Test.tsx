@@ -8,6 +8,7 @@ import Reference from "../components/Reference";
 import { setMark } from "../lib/db";
 import { useIsPhone } from "../lib/useIsPhone";
 import { isCorrectAnswer } from "../lib/data";
+import type { ModuleSnapshot } from "../lib/resume";
 
 const LETTERS: Choice[] = ["A", "B", "C", "D"];
 
@@ -43,6 +44,10 @@ interface Props {
   moduleIndex: number;
   sessionId: string;
   markedIds: Set<string>;
+  /** Where a resumed module left off. */
+  initial?: ModuleSnapshot;
+  /** Receives the module's state on every change, so it can be resumed. */
+  onSnapshot?: (s: ModuleSnapshot) => void;
   onSubmit: (attempts: Attempt[]) => void;
   onAbort: () => void;
 }
@@ -53,23 +58,25 @@ export default function Test({
   moduleIndex,
   sessionId,
   markedIds,
+  initial,
+  onSnapshot,
   onSubmit,
   onAbort,
 }: Props) {
   const questions = mod.questions;
-  const [idx, setIdx] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [crossed, setCrossed] = useState<Record<string, string[]>>({});
+  const [idx, setIdx] = useState(() => Math.min(initial?.idx ?? 0, questions.length - 1));
+  const [answers, setAnswers] = useState<Record<string, string>>(initial?.answers ?? {});
+  const [crossed, setCrossed] = useState<Record<string, string[]>>(initial?.crossed ?? {});
   const [marked, setMarked] = useState<Set<string>>(() => new Set(markedIds));
   const [remaining, setRemaining] = useState<number | null>(
-    mod.minutes != null ? mod.minutes * 60 : null
+    initial ? initial.remaining : mod.minutes != null ? mod.minutes * 60 : null
   );
   const [hideTimer, setHideTimer] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [crossMode, setCrossMode] = useState(false);
   /** Questions whose answer has been confirmed and therefore marked. */
-  const [checked, setChecked] = useState<Set<string>>(() => new Set());
+  const [checked, setChecked] = useState<Set<string>>(() => new Set(initial?.checked));
   const [desmos, setDesmos] = useState(false);
   const [reference, setReference] = useState(false);
   // Both tools dock to the right like the facing page of a book: the exam
@@ -85,7 +92,7 @@ export default function Test({
   const q = questions[idx];
   // Per-question time lives in a ref: it is never rendered, and a state update
   // could still be in flight when the module is submitted.
-  const times = useRef<Record<string, number>>({});
+  const times = useRef<Record<string, number>>({ ...initial?.times });
   const enteredAt = useRef(Date.now());
   const submitted = useRef(false);
   const paneRef = useRef<HTMLDivElement>(null);
@@ -158,6 +165,14 @@ export default function Test({
   useEffect(() => {
     if (remaining === 0) submit();
   }, [remaining, submit]);
+
+  // Runs on every tick as well, so a dropped tab loses a second at most.
+  useEffect(() => {
+    if (!onSnapshot || submitted.current) return;
+    const live = { ...times.current };
+    live[q.id] = (live[q.id] ?? 0) + (Date.now() - enteredAt.current);
+    onSnapshot({ idx, answers, crossed, checked: [...checked], remaining, times: live });
+  }, [answers, checked, crossed, idx, onSnapshot, q, remaining]);
 
   const instant = plan.instantFeedback;
 
@@ -292,8 +307,15 @@ export default function Test({
       <div className="test-main">
         <div className="test-head">
           <div className="row">
-            <strong>{plan.label}</strong>
-            {plan.modules.length > 1 && <span className="muted">· {mod.label}</span>}
+            {/* A phone has room for one of the two, and the module is what changes. */}
+            {phone && plan.modules.length > 1 ? (
+              <strong>{mod.label}</strong>
+            ) : (
+              <>
+                <strong>{plan.label}</strong>
+                {plan.modules.length > 1 && <span className="muted">· {mod.label}</span>}
+              </>
+            )}
           </div>
 
           <div className="timer-wrap">
