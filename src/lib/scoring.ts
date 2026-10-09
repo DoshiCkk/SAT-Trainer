@@ -22,7 +22,7 @@ const D = 1.7;
  * Location of each difficulty label on the ability scale, and one slope for
  * all. Fitted by simulation to the hard-route curves of Bluebook practice tests
  * (roughly: 5 misses ≈ 740, 10 ≈ 670 in Reading and Writing; 4 ≈ 750, 10 ≈ 650
- * in Math), within about 20 points; the easy route then tops out near 600.
+ * in Math), within about 20 points.
  */
 export const ITEM_B: Record<string, number> = { Easy: -1.0, Medium: 0.2, Hard: 2.0 };
 const ITEM_A = 0.65;
@@ -83,15 +83,21 @@ export function estimate(responses: Response[]): Estimate {
 export type Route = "easy" | "hard";
 
 /**
- * Ability the first module has to show for the harder second module: a little
- * above the average test taker. College Board keeps the real cut secret; this
- * one lands at about 60% of the scored questions on a standard first module,
- * which is where Bluebook practice tests seem to put it.
+ * Share of the first module's scored questions needed for the harder second
+ * module. College Board keeps the real cut secret, so this one is a plain count
+ * that can be known in advance: 20 of 25 in Reading and Writing, 16 of 20 in Math.
  */
-export const ROUTE_CUT = 0.1;
+export const ROUTE_SHARE = 0.8;
+
+/** Right answers the first module needs out of `scored` for the hard route. */
+export function routeThreshold(scored: number): number {
+  // The epsilon keeps 0.8 × 25 from landing a hair above 20.
+  return Math.ceil(ROUTE_SHARE * scored - 1e-9);
+}
 
 export function routeFor(firstModule: Response[]): Route {
-  return estimate(firstModule).theta >= ROUTE_CUT ? "hard" : "easy";
+  const right = firstModule.filter((r) => r.correct).length;
+  return right >= routeThreshold(firstModule.length) ? "hard" : "easy";
 }
 
 /** The questions of one section as drawn: both versions of the second module. */

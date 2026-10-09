@@ -10,6 +10,7 @@ import {
   practiceQuestions,
   type PracticeScope,
 } from "../lib/practice";
+import { ROUTE_SHARE } from "../lib/scoring";
 
 function duration(min: number): string {
   const h = Math.floor(min / 60);
@@ -67,8 +68,8 @@ export default function PracticeCard({
         </div>
         <p className="small muted" style={{ margin: 0 }}>
           Модуль 1 — смесь: {pctOf(m1.Easy)} Easy, {pctOf(m1.Medium)} Medium, {pctOf(m1.Hard)}{" "}
-          Hard. По его итогам модуль 2 лёгкий или сложный, как в Bluebook. В конце — балл 200–800
-          за секцию и 400–1600 за весь тест.
+          Hard. {pctOf(ROUTE_SHARE)} верных и больше — модуль 2 сложный, иначе лёгкий. В конце —
+          балл 200–800 за секцию и 400–1600 за весь тест.
         </p>
 
         <div className="wrap-chips">

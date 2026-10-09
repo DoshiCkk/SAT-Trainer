@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import type { Attempt, PracticeScore, RunPlan, SectionScore } from "../types";
+import { routeThreshold } from "../lib/scoring";
 
 function pct(n: number, d: number) {
   return d === 0 ? "—" : `${Math.round((n / d) * 100)}%`;
@@ -22,15 +23,6 @@ interface Props {
 
 const ROUTE_LABEL = { hard: "сложный", easy: "лёгкий" } as const;
 
-/** 1 вопрос, 4 вопроса, 8 вопросов. */
-function questionsWord(n: number): string {
-  const d = n % 10;
-  const dd = n % 100;
-  if (d === 1 && dd !== 11) return "вопрос";
-  if (d >= 2 && d <= 4 && (dd < 12 || dd > 14)) return "вопроса";
-  return "вопросов";
-}
-
 /** Where a 200–800 score and its band sit on the scale, in percent. */
 const at = (v: number) => `${((v - 200) / 600) * 100}%`;
 
@@ -50,8 +42,8 @@ function SectionRow({ s }: { s: SectionScore }) {
           диапазон {s.low}–{s.high}
         </span>
         <span>
-          модуль 1: {s.first.right}/{s.first.of} → модуль 2 {ROUTE_LABEL[s.route]}: {s.second.right}/
-          {s.second.of}
+          модуль 1: {s.first.right}/{s.first.of}, для сложного нужно {routeThreshold(s.first.of)} →
+          модуль 2 {ROUTE_LABEL[s.route]}: {s.second.right}/{s.second.of}
         </span>
       </div>
     </div>
@@ -86,7 +78,20 @@ export default function Results({ plan, attempts, score, onHome, onReview }: Pro
     return [...m.entries()].sort((x, y) => x[0] - y[0]);
   }, [attempts]);
 
-  const pretest = attempts.filter((a) => a.pretest);
+  /** Which question numbers did not count, module by module. */
+  const pretest = useMemo(
+    () =>
+      plan.modules
+        .filter((m) => m.pretest?.length && m.questions.length)
+        .map((m) => ({
+          label: m.label,
+          nums: m
+            .pretest!.map((id) => m.questions.findIndex((q) => q.id === id) + 1)
+            .filter((n) => n > 0)
+            .sort((a, b) => a - b),
+        })),
+    [plan]
+  );
 
   return (
     <div className="wrap" style={{ maxWidth: 780 }}>
@@ -108,9 +113,14 @@ export default function Results({ plan, attempts, score, onHome, onReview }: Pro
           {score.sections.map((s) => (
             <SectionRow key={s.section} s={s} />
           ))}
+          {pretest.length > 0 && (
+            <p className="small muted" style={{ margin: 0 }}>
+              <strong>Не в счёт</strong> — pretest, как на экзамене:{" "}
+              {pretest.map((m) => `${m.label} — №${m.nums.join(" и №")}`).join("; ")}. Ответы на
+              них сохранены в истории, но на балл не влияют.
+            </p>
+          )}
           <p className="small muted" style={{ margin: 0 }}>
-            {pretest.length > 0 &&
-              `${pretest.length} ${questionsWord(pretest.length)} не в счёт — это pretest, по 2 на модуль, как на экзамене. `}
             Балл считается по модели IRT, как у College Board: вес вопроса зависит от его
             сложности, а лёгкий второй модуль ограничивает потолок. Параметры вопросов
             College Board не публикует, поэтому балл — оценка; диапазон показывает её точность.
