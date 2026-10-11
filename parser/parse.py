@@ -362,7 +362,11 @@ def vstack(pixmaps):
 
 
 def trim_white(pix, pad=4):
-    """Crop uniform white margins so a rendered region sits tight in the UI."""
+    """Crop uniform white margins so a rendered region sits tight in the UI.
+
+    Returns None for a region with no ink at all, such as the empty foot of a
+    page a choice runs off, so it doesn't widen the stack it would join.
+    """
     try:
         import numpy as np
     except Exception:
@@ -373,7 +377,7 @@ def trim_white(pix, pad=4):
     rows = np.flatnonzero(ink.any(axis=1))
     cols = np.flatnonzero(ink.any(axis=0))
     if rows.size == 0 or cols.size == 0:
-        return pix
+        return None
     clip = fitz.IRect(
         max(int(cols[0]) - pad, 0),
         max(int(rows[0]) - pad, 0),
@@ -394,7 +398,9 @@ def render_crop(doc, regions, dest):
         r = fitz.Rect(rect)
         if r.height < 4 or r.width < 4:
             continue
-        pixmaps.append(trim_white(doc[pno].get_pixmap(matrix=mat, clip=r, alpha=False)))
+        pix = trim_white(doc[pno].get_pixmap(matrix=mat, clip=r, alpha=False))
+        if pix is not None:
+            pixmaps.append(pix)
     if not pixmaps:
         return False
     try:
@@ -521,6 +527,23 @@ def parse_question(doc, p0, p1, qid, fname, expected_domain, canon_skills, repor
     a_lines = slice_lines(a_start, c_start or r_start) if a_start else []
     r_lines = slice_lines(r_start, None) if r_start else []
 
+    extents = {}
+
+    def page_extent(pno):
+        """Top and bottom of everything printed on a page, text and art.
+
+        Text alone is not enough: a graph's axis numbers can be drawn as paths,
+        so a page that opens with a graph has no text until well below its top.
+        """
+        if pno not in extents:
+            ys = [L["bbox"][1] for L in per_page[pno]]
+            ye = [L["bbox"][3] for L in per_page[pno]]
+            _ru, _bu, fi = classify_drawings(doc[pno], 0, 1e4)
+            ys += [r.y0 for r in fi]
+            ye += [r.y1 for r in fi]
+            extents[pno] = (min(ys) - 4, max(ye) + 4) if ys else (20, 780)
+        return extents[pno]
+
     def regions_between(start, end, x0=PAGE_LEFT):
         """Page -> body rect between two (page, y0, y1) anchors."""
         out = {}
@@ -528,13 +551,12 @@ def parse_question(doc, p0, p1, qid, fname, expected_domain, canon_skills, repor
         for pno in pages:
             if pno < start[0] or pno > last:
                 continue
-            ys = [L["bbox"][1] for L in per_page[pno]]
-            ye = [L["bbox"][3] for L in per_page[pno]]
-            top = start[2] + 1 if pno == start[0] else (min(ys) - 4 if ys else 20)
+            page_top, page_bot = page_extent(pno)
+            top = start[2] + 1 if pno == start[0] else page_top
             if end and pno == last:
                 bot = end[1] - 2
             else:
-                bot = max(ye) + 4 if ye else 780
+                bot = page_bot
             if bot - top > 4:
                 out[pno] = fitz.Rect(x0, top, PAGE_RIGHT, bot)
         return out
@@ -633,22 +655,33 @@ def parse_question(doc, p0, p1, qid, fname, expected_domain, canon_skills, repor
         t = line_text(L, thr)
         if not t:
             continue
-        m = CHOICE_RE.match(t)
+        # Beside a graph or a table the "A." is set smaller than the art's own
+        # labels on that line, so it comes out marked as a subscript.
+        m = CHOICE_RE.match(re.sub(r"^<su([bp])>([A-D]\.\s*)</su\1>", r"\2", t))
         if m and L["bbox"][0] < 26:
             cur = m.group(1)
             choices[cur] = m.group(2).strip()
-            choice_tops.append((cur, pno, L["bbox"][1]))
+            choice_tops.append((cur, pno, L["bbox"][1], L["bbox"][3]))
         elif cur:
             choices[cur] = (choices[cur] + " " + t).strip()
     choices = {k: clean_text(v) for k, v in choices.items()}
     qtype = "mcq" if len(choices) >= 2 else "spr"
 
     # --- key
+    def key_list(val):
+        """"either 2 or 8" -> ["2", "8"]; words left by glyphs that didn't extract go."""
+        out = []
+        for p in re.split(r"[,;]|\bor\b", val):
+            p = re.sub(r"^\s*either\b", "", p).strip()
+            if p and re.search(r"\d", p) and p not in out:
+                out.append(p)
+        return out
+
     raw_key = anchors.get("_correct_val", "")
     if qtype == "mcq":
         correct = re.findall(r"\b([A-D])\b", raw_key.upper())[:1]
     else:
-        correct = [p.strip() for p in re.split(r"[,;]| or ", raw_key) if p.strip()]
+        correct = key_list(raw_key)
 
     # --- rationale
     r_chunks = []
@@ -659,14 +692,24 @@ def parse_question(doc, p0, p1, qid, fname, expected_domain, canon_skills, repor
     if not rationale:
         report["no_rationale"].append(qid)
 
-    # Some student-produced-response exports omit the "Correct Answer:" line and
-    # only state the key inside the rationale.
-    if not correct and rationale:
-        m = re.search(r"correct answer is\s*([^.\r\n]{1,40}?)\s*\.", rationale, re.I)
+    # Some exports omit the "Correct Answer:" line and only state the key inside
+    # the rationale: "Choice C is correct." or "The correct answer is 14."
+    if not correct and rationale and qtype == "mcq":
+        m = re.search(r"\bChoice ([A-D]) is correct\b", rationale)
         if m:
-            val = clean_text(re.sub(r"<[^>]+>", "", m.group(1))).strip()
-            if val:
-                correct = [p.strip() for p in re.split(r"[,;]| or ", val) if p.strip()]
+            correct = [m.group(1)]
+    if not correct and rationale:
+        # The sentence ends at a full stop, not at the point of "1.5".
+        m = re.search(r"correct answer is\s*([^\r\n]{1,40}?)\s*\.(?!\d)", rationale, re.I)
+        if m:
+            correct = key_list(clean_text(re.sub(r"<[^>]+>", "", m.group(1))))
+        # "Note that 1.5 and 3/2 are examples of ways to enter a correct answer."
+        m = re.search(r"Note that ([^\r\n]{1,80}?) (?:are|is) (?:examples|an example) of ways? to enter",
+                      rationale)
+        if correct and m:
+            for p in key_list(clean_text(re.sub(r"<[^>]+>", "", m.group(1))).replace(" and ", ", ")):
+                if p not in correct:
+                    correct.append(p)
     if not correct:
         report["no_key"].append(qid)
 
@@ -718,6 +761,49 @@ def parse_question(doc, p0, p1, qid, fname, expected_domain, canon_skills, repor
             lo = hi + 1
         return pno, bands
 
+    def span_regions(start, end):
+        """Page -> rect for the stretch from (page, y) `start` to `end`."""
+        out = {}
+        for pno in range(start[0], end[0] + 1):
+            top, bot = page_extent(pno)
+            if pno == start[0]:
+                top = start[1]
+            if pno == end[0]:
+                bot = end[1]
+            if bot - top > 4:
+                out[pno] = fitz.Rect(CHOICE_TEXT_LEFT, top, PAGE_RIGHT, bot)
+        return out
+
+    def choice_spans():
+        """One stretch per choice, cut at the letters themselves.
+
+        For when the gaps can't be trusted: choices drawn as graphs or tables
+        run over several pages. The letter sits either above its art or, set on
+        the art's baseline, below it; which one shows in whether anything is
+        printed between "Answer" and "A.".
+        """
+        first = (choice_tops[0][1], choice_tops[0][2] + 1)
+        # A table's top border can sit just above its letter, so only art of
+        # some height counts as printed before it.
+        lead = defaultdict(list)
+        for p_, r in ans_figs:
+            if (p_, r.y0) >= (a_start[0], a_start[2]) and (p_, r.y1) <= first:
+                lead[p_].append(r)
+        before = sum(max(r.y1 for r in rs) - min(r.y0 for r in rs) for rs in lead.values()) > 20
+        stops = [(p_, y1 + 2) for _l, p_, _y0, y1 in choice_tops]
+        if before:
+            starts = [(a_start[0], a_start[2] + 1)] + stops[:-1]
+            return list(zip(starts, stops))
+        def block_top(p_, y0):
+            # A table set beside its letter starts a little above the letter's
+            # line; its borders and cells reach down past that line.
+            tops = [r.y0 for q_, r in ans_figs if q_ == p_ and y0 - 12 <= r.y0 < y0 <= r.y1]
+            return min(tops + [y0])
+
+        starts = [(p_, block_top(p_, y0) - 2) for _l, p_, y0, _y1 in choice_tops]
+        last = (ans_end[0], ans_end[1] - 2) if ans_end else (p1, page_extent(p1)[1])
+        return list(zip(starts, starts[1:] + [last]))
+
     # When the choices carry formulas, slice one crop per choice so each stays
     # separately selectable instead of collapsing into one picture.
     choice_images = {}
@@ -725,9 +811,14 @@ def parse_question(doc, p0, p1, qid, fname, expected_domain, canon_skills, repor
         got = choice_bands(len(choice_tops))
         if got:
             pno, bands = got
-            for (letter, _p, _y), (y0, y1) in zip(choice_tops, bands):
+            for (letter, _p, _y0, _y1), (y0, y1) in zip(choice_tops, bands):
                 rect = fitz.Rect(CHOICE_TEXT_LEFT, y0 - 2, PAGE_RIGHT, y1 + 2)
                 path = crop_region({pno: rect}, "-%s" % letter)
+                if path:
+                    choice_images[letter] = path
+        else:
+            for (letter, *_), (start, end) in zip(choice_tops, choice_spans()):
+                path = crop_region(span_regions(start, end), "-%s" % letter)
                 if path:
                     choice_images[letter] = path
         if len(choice_images) == len(choice_tops):

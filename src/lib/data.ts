@@ -125,11 +125,51 @@ export function buildHistory(attempts: Attempt[], marks: string[]): History {
   return { last, all, marked: new Set(marks) };
 }
 
-/** The key check, shared by instant feedback and by module submission. */
+/** A typed answer as a number — "1.5", ".5", "-3/2" — or null when it isn't one. */
+function numeric(v: string): number | null {
+  const s = v.replace(/\s+/g, "").replace(/[−–]/g, "-");
+  const frac = /^(-?)(\d+)\/(\d+)$/.exec(s);
+  if (frac) {
+    const d = Number(frac[3]);
+    return d === 0 ? null : ((frac[1] ? -1 : 1) * Number(frac[2])) / d;
+  }
+  return /^-?(\d+\.?\d*|\.\d+)$/.test(s) ? Number(s) : null;
+}
+
+/**
+ * The key check, shared by instant feedback and by module submission. A typed
+ * answer counts in any form of the same number, as on the real test: 1.50, 3/2
+ * and 6/4 all match a key of 1.5.
+ */
 export function isCorrectAnswer(q: Question, given: string | null): boolean {
   if (given == null) return false;
   const norm = (v: string) => v.trim().toLowerCase();
-  return q.correct.some((c) => norm(c) === norm(given));
+  if (q.correct.some((c) => norm(c) === norm(given))) return true;
+  if (q.type !== "spr") return false;
+  const g = numeric(given);
+  return (
+    g != null &&
+    q.correct.some((c) => {
+      const k = numeric(c);
+      return k != null && Math.abs(k - g) < 1e-9;
+    })
+  );
+}
+
+/**
+ * Attempts graded against an older key: the answer is kept, so a corrected
+ * key regrades it. Returns only the rows whose verdict changes.
+ */
+export function regrade(attempts: Attempt[], questions: Question[]): Attempt[] {
+  const byId = new Map(questions.map((q) => [q.id, q]));
+  const out: Attempt[] = [];
+  for (const a of attempts) {
+    const q = byId.get(a.questionId);
+    if (!q || a.answer == null) continue;
+    const ok = isCorrectAnswer(q, a.answer);
+    if (ok !== a.correct) out.push({ ...a, correct: ok });
+  }
+  return out;
 }
 
 /**

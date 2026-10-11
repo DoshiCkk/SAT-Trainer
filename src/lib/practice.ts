@@ -29,11 +29,14 @@ export const SCOPES: { id: PracticeScope; title: string; sections: Section[] }[]
   { id: "math", title: "Только Math", sections: ["Math"] },
 ];
 
-/** Difficulty mix of each module kind. */
+/**
+ * Difficulty mix of each module kind. College Board publishes none of them;
+ * the hard second module is reported to run about two thirds Hard.
+ */
 export const MIX: Record<"first" | Route, Record<string, number>> = {
   first: { Easy: 0.25, Medium: 0.5, Hard: 0.25 },
   easy: { Easy: 0.5, Medium: 0.4, Hard: 0.1 },
-  hard: { Easy: 0.1, Medium: 0.4, Hard: 0.5 },
+  hard: { Easy: 0.05, Medium: 0.3, Hard: 0.65 },
 };
 
 /** Questions per module that are tried out and not scored, as on the real test. */

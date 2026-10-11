@@ -10,6 +10,7 @@ tsconfig.tsbuildinfo
 Themes/
 public/questions.json
 public/img/
+exam_review_*.md
 
 # рабочие скриншоты
 Снимок экрана*.png

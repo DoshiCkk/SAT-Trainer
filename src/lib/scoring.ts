@@ -22,7 +22,7 @@ const D = 1.7;
  * Location of each difficulty label on the ability scale, and one slope for
  * all. Fitted by simulation to the hard-route curves of Bluebook practice tests
  * (roughly: 5 misses ≈ 740, 10 ≈ 670 in Reading and Writing; 4 ≈ 750, 10 ≈ 650
- * in Math), within about 20 points.
+ * in Math), within about 15 points.
  */
 export const ITEM_B: Record<string, number> = { Easy: -1.0, Medium: 0.2, Hard: 2.0 };
 const ITEM_A = 0.65;

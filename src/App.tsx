@@ -9,7 +9,7 @@ import type {
   RunPlan,
   Session,
 } from "./types";
-import { buildHistory, buildTaxonomy, loadQuestions, type History } from "./lib/data";
+import { buildHistory, buildTaxonomy, loadQuestions, regrade, type History } from "./lib/data";
 import {
   listAttempts,
   listMarks,
@@ -82,8 +82,11 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
+      let qs: Question[];
       try {
-        const { questions: qs, counts: c } = await loadQuestions();
+        const loaded = await loadQuestions();
+        qs = loaded.questions;
+        const c = loaded.counts;
         setQuestions(qs);
         setCounts(c);
         setPending(loadRun(qs));
@@ -95,6 +98,14 @@ export default function App() {
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
         return;
+      }
+      // A corrected key or a fairer check fixes old verdicts in place, so the
+      // history never keeps counting a right answer as wrong.
+      try {
+        const fixed = regrade(await listAttempts(), qs);
+        if (fixed.length) await putAttempts(fixed);
+      } catch {
+        // Storage unavailable: the history load below copes the same way.
       }
       void refreshHistory();
     })();

@@ -3,7 +3,7 @@
  */
 import { readFileSync } from "node:fs";
 import type { Attempt, ModulePlan, Question, QuestionFile, RunPlan } from "../types";
-import { buildHistory } from "./data";
+import { buildHistory, isCorrectAnswer, regrade } from "./data";
 import { buildPractice, routeNext, scorePractice } from "./practice";
 import { loadRun, saveRun } from "./resume";
 
@@ -60,9 +60,14 @@ check(
   JSON.stringify(tally(rw2.routes!.easy.questions, "difficulty"))
 );
 check(
-  "R&W сложный модуль 2: 3 / 11 / 13",
-  same(tally(rw2.routes!.hard.questions, "difficulty"), { Easy: 3, Medium: 11, Hard: 13 }),
+  "R&W сложный модуль 2: 1 / 8 / 18",
+  same(tally(rw2.routes!.hard.questions, "difficulty"), { Easy: 1, Medium: 8, Hard: 18 }),
   JSON.stringify(tally(rw2.routes!.hard.questions, "difficulty"))
+);
+check(
+  "Math сложный модуль 2: 1 / 7 / 14",
+  same(tally(m2.routes!.hard.questions, "difficulty"), { Easy: 1, Medium: 7, Hard: 14 }),
+  JSON.stringify(tally(m2.routes!.hard.questions, "difficulty"))
 );
 
 // --- domain mix holds in every module at once with the difficulty mix
@@ -315,6 +320,22 @@ check(
   loadRun(questions.filter((q) => q.id !== plan.modules[0].questions[0].id)) === null &&
     store.size === 0
 );
+
+// Typed answers: any form of the same number counts, as on the real test.
+const spr = { ...questions.find((q) => q.type === "spr")!, correct: ["1.5", "3/2"] };
+check(
+  "ответ с вводом: 1.5, 1.50, 3/2, 6/4 и .5-формы засчитываются, 1 и 15 — нет",
+  ["1.5", "1.50", " 3/2 ", "6/4"].every((v) => isCorrectAnswer(spr, v)) &&
+    !["1", "15", "3/", "abc"].some((v) => isCorrectAnswer(spr, v)) &&
+    isCorrectAnswer({ ...spr, correct: [".5"] }, "0.5") &&
+    isCorrectAnswer({ ...spr, correct: ["-4.9", "-49/10"] }, "-4.90")
+);
+const old: Attempt = {
+  key: "s:" + spr.id, sessionId: "s", moduleIndex: 0, questionId: spr.id, domain: spr.domain,
+  skill: spr.skill, difficulty: spr.difficulty, answer: "1.5", correct: false, timeMs: 1, marked: false, at: 1,
+};
+const fixed = regrade([old, { ...old, key: "s:x", answer: "2" }], [spr]);
+check("исправленный ключ пересчитывает старые попытки", fixed.length === 1 && fixed[0].correct);
 
 console.log(failures === 0 ? "\nвсе проверки прошли\n" : `\n${failures} проверок упало\n`);
 process.exit(failures === 0 ? 0 : 1);

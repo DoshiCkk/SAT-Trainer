@@ -388,6 +388,14 @@ export default function Test({
             )}
             {!hasLeft && q.passage.trim() && <RichText text={q.passage} className="passage" />}
             {q.stem.trim() && <RichText text={q.stem} className="stem" />}
+            {/* Choices the parser could not slice one by one: the letters stay as
+                buttons, the art is shown as it is in the PDF. */}
+            {q.type === "mcq" &&
+              q.choicesImage &&
+              !choiceImages &&
+              LETTERS.every((L) => !q.choices?.[L]?.trim()) && (
+                <Crop src={q.choicesImage} alt="Варианты ответа из PDF" zoomable />
+              )}
 
             {q.type === "mcq" && q.choices ? (
               <div className="choices">
