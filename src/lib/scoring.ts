@@ -85,13 +85,13 @@ export type Route = "easy" | "hard";
 /**
  * Share of the first module's scored questions needed for the harder second
  * module. College Board keeps the real cut secret, so this one is a plain count
- * that can be known in advance: 20 of 25 in Reading and Writing, 16 of 20 in Math.
+ * that can be known in advance: 19 of 25 in Reading and Writing, 15 of 20 in Math.
  */
-export const ROUTE_SHARE = 0.8;
+export const ROUTE_SHARE = 0.75;
 
 /** Right answers the first module needs out of `scored` for the hard route. */
 export function routeThreshold(scored: number): number {
-  // The epsilon keeps 0.8 × 25 from landing a hair above 20.
+  // The epsilon keeps 0.75 × 20 from landing a hair above 15.
   return Math.ceil(ROUTE_SHARE * scored - 1e-9);
 }
 

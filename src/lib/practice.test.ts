@@ -221,7 +221,7 @@ check(
   JSON.stringify(cs.sections.map((s) => [s.score, s.route]))
 );
 
-// The cut is a plain count of scored first-module answers: 20/25 and 16/20.
+// The cut is a plain count of scored first-module answers: 19/25 and 15/20.
 const scoredOf = (mod: ModulePlan) => mod.questions.filter((q) => !mod.pretest!.includes(q.id));
 const firstN = (mi: number, n: number) => {
   const ids = new Set(scoredOf(plan.modules[mi]).slice(0, n).map((q) => q.id));
@@ -229,17 +229,17 @@ const firstN = (mi: number, n: number) => {
 };
 const cut = (rw: number, math: number) =>
   answerAll(plan, (q, _i, mi) => (mi === 0 ? firstN(0, rw)(q) : mi === 2 ? firstN(2, math)(q) : true));
-const atCut = scorePractice(cut(20, 16).plan, cut(20, 16).attempts).sections.map((s) => s.route);
-const belowCut = scorePractice(cut(19, 15).plan, cut(19, 15).attempts).sections.map((s) => s.route);
+const atCut = scorePractice(cut(19, 15).plan, cut(19, 15).attempts).sections.map((s) => s.route);
+const belowCut = scorePractice(cut(18, 14).plan, cut(18, 14).attempts).sections.map((s) => s.route);
 check(
-  "порог 80%: 20/25 и 16/20 → сложный, 19/25 и 15/20 → лёгкий",
+  "порог 75%: 19/25 и 15/20 → сложный, 18/25 и 14/20 → лёгкий",
   atCut.join() === "hard,hard" && belowCut.join() === "easy,easy",
   `${atCut.join()} / ${belowCut.join()}`
 );
-const nearCap = scorePractice(cut(19, 15).plan, cut(19, 15).attempts).sections.map((s) => s.score);
+const nearCap = scorePractice(cut(18, 14).plan, cut(18, 14).attempts).sections.map((s) => s.score);
 check(
-  "чуть ниже порога и всё верно в лёгком модуле 2 — потолок около 680",
-  nearCap.every((v) => v >= 640 && v <= 720),
+  "чуть ниже порога и всё верно в лёгком модуле 2 — потолок около 650",
+  nearCap.every((v) => v >= 610 && v <= 700),
   nearCap.join(", ")
 );
 
